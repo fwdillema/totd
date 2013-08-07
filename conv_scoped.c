@@ -3,7 +3,7 @@
  * Copyright (C) 1999,2002 University of Tromso. All rights reserved.
  * Copyright (C) 2002 Invenia Innovation AS. All rights reserved.
  *
- * Author: Feike W. Dillema, feico@pasta.cs.uit.no.
+ * Author: Feike W. Dillema, feico@dillema.net.
  *         based on newbie code by Yusuke DOI, Keio Univ. Murai Lab.
  ****************************************************************************/
 
