@@ -5,6 +5,7 @@
  *
  * Author: Feike W. Dillema, feico@dillema.net.
  *         based on newbie code by Yusuke DOI, Keio Univ. Murai Lab.
+ * Modified by: Gabor Lencse, see details below
  ****************************************************************************/
 
 /*
@@ -18,19 +19,62 @@ static int dname_copy (u_char *, u_char *, int);
 static u_char *dname_redirect (u_char *, u_char *);
 static u_char *mesg_read_sec (G_List *, u_char *, int, u_char *, int);
 
-uint16_t mesg_id (void) {
-	static uint16_t id = 0;
+/* Modifications made by Gabor Lencse, lencse@sze.hu for adding random Transaction IDs */
+/* For more details, see our paper (currently under review): */
+/* G. Lencse and S. Repas, "Improving the Performance and Security of the TOTD DNS64 Implementation" */
+/* http://www.hit.bme.hu/~lencse/publications/Improving-TOTD-for-review.pdf */ 
 
-	if (!id) {
-		srandom (time (NULL));
-		id = random ();
-	}
-	id++;
+#define ARRAY_SIZE 0x8000	/* Size of the static array storing permutations */
+#define NUM_USE 0x4000		/* Number of elements used up from the array of permutations */
+#define LOW_START 0x0000	/* Starting value of the lower range */
+#define HIGH_START 0x8000	/* Starting value of the higher range */
 
-	if (T.debug > 4)
-		syslog (LOG_DEBUG, "mesg_id() = %d", id);
-	return id;
+static uint16_t permutation[ARRAY_SIZE]; /* The static array for storing random permutations */
+
+/* Prepare a random permutation of the integers [start, start + ARRAY_SIZE - 1] into the static array */
+/* Algorithm: http://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_.22inside-out.22_algorithm */
+void make_random_permutation(int start) {
+        int i, j;
+
+        permutation[0] = start;	
+        for (i = 1; i < ARRAY_SIZE; i++) {
+                j = random() * (double)(i + 1) / RAND_MAX; /* random number from the range [0, i] */
+                if (j != i) { 
+                  permutation[i] = permutation[j];
+                }
+                permutation[j] = start + i;
+        }
 }
+
+/* Provide hard to predict unique random DNS Transaction IDs */
+/* by using random permutations and alternating ranges */
+uint16_t mesg_id (void) {
+        static int range = 0; /* indicates that no permutation has been generated yet */
+        static int index;
+
+        if (!range) {
+                srandom(time(0)); 	/* initialize random number generator seed */
+                range = 1;		/* choose the lower range first */
+                make_random_permutation(LOW_START);
+                index = 0;		/* start from the first element */
+        }
+        if ( index == NUM_USE ) {	/* if the pool is exhasuted */
+                if (range == 1) {
+                        range = 2;	/* choose the higher range */
+                        make_random_permutation(HIGH_START);
+                }
+                else {
+                        range = 1;	/* choose the lower range */
+                        make_random_permutation(LOW_START);
+                }
+                index = 0;
+        }
+	if (T.debug > 4) { 
+		syslog (LOG_DEBUG, "mesg_id() = %d", permutation[index]);
+        }
+        return permutation[index++];
+}
+/* End of modifications by Gabor Lencse */
 
 int mesg_make_query (u_char *qname, uint16_t qtype, uint16_t qclass,
 		     uint32_t id, int rd, u_char *buf, int buflen) {
@@ -39,10 +83,10 @@ int mesg_make_query (u_char *qname, uint16_t qtype, uint16_t qclass,
 	int i, written_len;
 	Mesg_Hdr *hdr;
 
-	if (T.debug > 4)
+	if (T.debug > 4) { 
 		syslog (LOG_DEBUG, "%s: (qtype: %s, id: %d): start", fn,
 			string_rtype (qtype), id);
-
+        }
 	hdr = (Mesg_Hdr *) buf;
 
 	/* write header */

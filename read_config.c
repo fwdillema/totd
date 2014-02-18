@@ -125,7 +125,8 @@ int read_config (char *config_file) {
 				errcnt++;
 			}
 
-			for (i = 0; T.iflist[i] && i < MAXINTERFACES; i++);
+			for (i = 0; T.iflist[i] && i < MAXINTERFACES; i++) { 
+                        };
 
 		 	if (i + argcnt-1 > MAXINTERFACES) {
 				syslog (LOG_ERR, "line %d: to many interfaces, more than %d", linenum, MAXINTERFACES);
