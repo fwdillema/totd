@@ -14,7 +14,7 @@
 #include "totd.h"
 
 struct ToT T;
-char *version = "Trick or Treat Daemon (totd) version 1.5.2";
+char *version = "Trick or Treat Daemon (totd) version 1.5.3";
 
 void usage () {
 	printf ("%s\n\
